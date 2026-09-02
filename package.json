@@ -1,0 +1,64 @@
+{
+  "name": "@verifnow/sdk",
+  "version": "1.0.0",
+  "description": "Official Node.js SDK for the VerifNow validation API — email, phone, IBAN, VAT, SSN, SIN and NIF validation in one call.",
+  "keywords": [
+    "verifnow",
+    "validation",
+    "email-validation",
+    "email-verification",
+    "iban",
+    "vat",
+    "vies",
+    "phone-validation",
+    "api-client",
+    "typescript"
+  ],
+  "homepage": "https://www.verifnow.io",
+  "bugs": {
+    "url": "https://github.com/jfiolleau/verifnow-node/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfiolleau/verifnow-node.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Jerome Fiolleau",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

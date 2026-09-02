@@ -1,0 +1,145 @@
+/**
+ * Validation rules exposed by the VerifNow API.
+ *
+ * Each maps to `POST /api/v1/validate/{rule}`.
+ */
+export type ValidationRule =
+  | 'email'
+  | 'phone'
+  | 'iban'
+  | 'vat'
+  | 'nas'
+  | 'ssn'
+  | 'nif';
+
+export const VALIDATION_RULES: readonly ValidationRule[] = [
+  'email',
+  'phone',
+  'iban',
+  'vat',
+  'nas',
+  'ssn',
+  'nif',
+] as const;
+
+/**
+ * Depth of checks applied to a request, decided by the plan attached to the API key.
+ *
+ * `STANDARD` runs on the FREE and STARTER plans, `ADVANCED` on GROWTH, `PREMIUM` on PRO.
+ * Branch on this rather than on the plan name: it is the only value that tells you which
+ * signals are actually present in the response.
+ */
+export type ValidationLevel = 'BASIC' | 'STANDARD' | 'ADVANCED' | 'PREMIUM';
+
+/** Categorical risk assessment. Returned from `ADVANCED` depth upward. */
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type Deliverability =
+  | 'DELIVERABLE'
+  | 'RISKY'
+  | 'UNDELIVERABLE'
+  | 'UNKNOWN';
+
+/**
+ * Per-signal breakdown behind an email verdict.
+ *
+ * Fields are `undefined` when the applied level does not compute them — the last four require
+ * `ADVANCED` depth or higher. Check `ValidationResult.appliedLevel` before relying on one.
+ */
+export interface EmailSignals {
+  /** The address matches the syntax pattern for the applied level. */
+  syntaxValid?: boolean;
+  /** The domain resolves and publishes MX (or fallback A) records. */
+  mxValid?: boolean;
+  /** A likely typo was found in the domain, e.g. `gmail.con`. */
+  typoDetected?: boolean;
+  /** The correction proposed when `typoDetected` is true. */
+  suggestedDomain?: string;
+  /** The domain belongs to a throwaway mailbox provider. */
+  disposable?: boolean;
+  /** The local part is a shared mailbox: `info@`, `admin@`, `noreply@`. */
+  roleBased?: boolean;
+  /** The domain is a consumer mailbox provider. Requires ADVANCED. */
+  freeProvider?: boolean;
+  /** Estimated age of the domain in days. Requires ADVANCED. */
+  domainAgeDays?: number;
+  /** Identified mail provider, e.g. `google`. Requires ADVANCED. */
+  mxProvider?: string;
+  /** Mail server quality between 0 and 1. Requires ADVANCED. */
+  mxQualityScore?: number;
+}
+
+/** Email-specific diagnostics. Absent when the applied level is `BASIC`. */
+export interface EmailDetails {
+  signals?: EmailSignals;
+  /** Aggregated risk on a 0–100 scale, where 0 is the lowest risk. */
+  riskScore?: number;
+  /** Categorical risk. Requires ADVANCED depth or higher. */
+  riskLevel?: RiskLevel;
+  deliverability?: Deliverability;
+  /** The depth actually applied, echoed back by the API. */
+  appliedLevel?: ValidationLevel;
+}
+
+/** Outcome of a single validation call. */
+export interface ValidationResult {
+  /** Whether the value passed every check the applied level ran. */
+  valid: boolean;
+  /** Human-readable explanation of the verdict. */
+  message?: string;
+  /** Canonical form of the input — `null` when the value is invalid. */
+  normalizedValue: string | null;
+  /** The value exactly as submitted. */
+  originalValue?: string;
+  /** Depth applied to this request. */
+  validationLevel?: ValidationLevel;
+  /** Present for email validations from `STANDARD` depth upward. */
+  emailDetails?: EmailDetails;
+  /** Quota state reported by the response headers. */
+  quota?: QuotaInfo;
+  /** The unmodified JSON body, for fields this SDK version does not model yet. */
+  raw: Record<string, unknown>;
+}
+
+/** Quota counters read from the `X-RateLimit-*` response headers. */
+export interface QuotaInfo {
+  /** Validations included in the current billing period. */
+  limit?: number;
+  /** Validations left before overage or blocking. */
+  remaining?: number;
+  /** When the current period resets. */
+  resetAt?: Date;
+  /** True once you are past the included quota and into per-unit billing. */
+  overage?: boolean;
+}
+
+export interface RetryOptions {
+  /**
+   * Retry attempts after the first failure. Defaults to 2, so up to 3 requests in total.
+   * Only connection failures, 429 and 5xx are retried — never a 400 or 401, which will not
+   * succeed on a second try.
+   */
+  attempts?: number;
+  /** Delay before the first retry, in ms. Doubles each attempt. Defaults to 200. */
+  backoffMs?: number;
+  /** Upper bound on a single backoff delay, in ms. Defaults to 2000. */
+  maxBackoffMs?: number;
+}
+
+export interface VerifNowOptions {
+  /** API key created in the VerifNow dashboard. Sent as the `X-API-KEY` header. */
+  apiKey: string;
+  /** Override the API origin. Defaults to `https://api.verifnow.io`. */
+  baseUrl?: string;
+  /** Abort a single request after this many ms. Defaults to 5000. */
+  timeoutMs?: number;
+  /** Retry policy, or `false` to disable retries entirely. */
+  retry?: RetryOptions | false;
+  /** Extra headers merged into every request. */
+  headers?: Record<string, string>;
+  /**
+   * Replacement for the global `fetch`, for tests or a custom agent.
+   * Defaults to `globalThis.fetch`.
+   */
+  fetch?: typeof globalThis.fetch;
+}
