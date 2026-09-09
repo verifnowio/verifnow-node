@@ -220,6 +220,112 @@ describe('response mapping', () => {
     expect(result.quota?.resetAt?.getTime()).toBe(resetAt * 1000);
   });
 
+  it('maps VAT diagnostics, including the trader details', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        message: 'Valid VAT number',
+        normalizedValue: 'IE6388047V',
+        originalValue: 'IE6388047V',
+        validationLevel: 'STANDARD',
+        vatDetails: {
+          format_valid: true,
+          registered: true,
+          country_code: 'IE',
+          source: 'LIVE',
+          checked_at: '2026-09-08T02:21:25Z',
+          trader_name: 'GOOGLE IRELAND LIMITED',
+          trader_address: '3RD FLOOR, GORDON HOUSE, BARROW STREET, DUBLIN 4',
+          vies_available: true,
+        },
+      }),
+    );
+    const result = await client(impl).validateVat('IE6388047V');
+
+    expect(result.vatDetails?.formatValid).toBe(true);
+    expect(result.vatDetails?.registered).toBe(true);
+    expect(result.vatDetails?.countryCode).toBe('IE');
+    expect(result.vatDetails?.source).toBe('LIVE');
+    expect(result.vatDetails?.traderName).toBe('GOOGLE IRELAND LIMITED');
+    expect(result.vatDetails?.viesAvailable).toBe(true);
+    expect(result.vatDetails?.checkedAt?.toISOString()).toBe('2026-09-08T02:21:25.000Z');
+  });
+
+  it('keeps registered:null distinct from registered:false', async () => {
+    // The distinction this whole type exists to carry. `false` means the registry answered and
+    // the number is not there; `null` means VIES could not be asked. A caller that cannot tell
+    // them apart rejects legitimate businesses during someone else's outage.
+    const unverified = fetchReturning(
+      jsonResponse({
+        valid: true,
+        normalizedValue: 'FR12345678901',
+        validationLevel: 'STANDARD',
+        vatDetails: {
+          format_valid: true,
+          registered: null,
+          country_code: 'FR',
+          source: 'UNVERIFIED',
+          vies_available: false,
+        },
+      }),
+    );
+    const unknown = await client(unverified.impl).validateVat('FR12345678901');
+
+    expect(unknown.vatDetails?.registered).toBeNull();
+    expect(unknown.vatDetails?.registered).not.toBe(false);
+    expect(unknown.vatDetails?.source).toBe('UNVERIFIED');
+
+    const absent = fetchReturning(
+      jsonResponse({
+        valid: false,
+        validationLevel: 'STANDARD',
+        vatDetails: {
+          format_valid: true,
+          registered: false,
+          country_code: 'FR',
+          source: 'CACHE',
+          vies_available: true,
+        },
+      }),
+    );
+    const notRegistered = await client(absent.impl).validateVat('FR12345678901');
+
+    expect(notRegistered.vatDetails?.registered).toBe(false);
+  });
+
+  it('reads a vatDetails without a registered key as unknown, not as unregistered', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        validationLevel: 'STANDARD',
+        vatDetails: { format_valid: true, country_code: 'DE', source: 'UNVERIFIED' },
+      }),
+    );
+    const result = await client(impl).validateVat('DE811907980');
+
+    expect(result.vatDetails?.registered).toBeNull();
+  });
+
+  it('leaves vatDetails undefined on a non-VAT validation', async () => {
+    const { impl } = fetchReturning(jsonResponse(VALID_EMAIL_BODY));
+    const result = await client(impl).validateEmail('user@example.com');
+
+    expect(result.vatDetails).toBeUndefined();
+  });
+
+  it('ignores an unparseable checked_at rather than producing an Invalid Date', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        validationLevel: 'STANDARD',
+        vatDetails: { format_valid: true, registered: true, checked_at: 'not-a-date' },
+      }),
+    );
+    const result = await client(impl).validateVat('IE6388047V');
+
+    expect(result.vatDetails?.checkedAt).toBeUndefined();
+  });
+
   it('rejects a success status carrying a non-JSON body', async () => {
     const { impl } = fetchReturning(new Response('<html>gateway</html>', { status: 200 }));
 

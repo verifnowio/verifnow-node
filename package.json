@@ -1,7 +1,7 @@
 {
   "name": "@verifnow/sdk",
-  "version": "1.0.0",
-  "description": "Official Node.js SDK for the VerifNow validation API \u2014 email, phone, IBAN, VAT, SSN, SIN and NIF validation in one call.",
+  "version": "1.1.0",
+  "description": "Official Node.js SDK for the VerifNow validation API — email, phone, IBAN, VAT, SSN, SIN and NIF validation in one call.",
   "keywords": [
     "verifnow",
     "validation",

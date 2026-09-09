@@ -21,6 +21,8 @@ export {
   type ValidationLevel,
   type ValidationResult,
   type ValidationRule,
+  type VatDetails,
+  type VatSource,
   type VerifNowOptions,
 } from './types.js';
 

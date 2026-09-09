@@ -81,6 +81,50 @@ export interface EmailDetails {
   appliedLevel?: ValidationLevel;
 }
 
+/**
+ * Where a VAT registration verdict came from.
+ *
+ * VIES publishes no SLA and drops member states several times a month, so a VAT answer is not
+ * always a live one. Branch on this rather than on `ValidationResult.valid` whenever the
+ * difference matters for your own compliance.
+ */
+export type VatSource =
+  /** Confirmed against VIES during this request. */
+  | 'LIVE'
+  /** Served from a VIES answer less than 24 hours old. */
+  | 'CACHE'
+  /** VIES was unreachable, so an older cached answer was used. */
+  | 'STALE'
+  /** VIES was unreachable and nothing was cached. Registration is unknown. */
+  | 'UNVERIFIED'
+  /** The country is outside VIES, so no registry lookup is possible. */
+  | 'NOT_APPLICABLE';
+
+/** VAT-specific diagnostics. Present on `vat` validations. */
+export interface VatDetails {
+  /** The number matches its member state's structure. Decided locally, never depends on VIES. */
+  formatValid?: boolean;
+  /**
+   * Present in the member state's registry.
+   *
+   * **`null` means unknown, never "not registered."** It is returned when VIES could not be
+   * consulted. Treating `null` as `false` rejects legitimate customers during someone else's
+   * outage — the single most expensive mistake available in VAT validation.
+   */
+  registered: boolean | null;
+  /** Member state the number belongs to, e.g. `IE`. Greece is `EL`, Northern Ireland `XI`. */
+  countryCode?: string;
+  source?: VatSource;
+  /** When the registration was last confirmed against VIES. */
+  checkedAt?: Date;
+  /** Registered trading name, when the member state discloses it. Germany does not. */
+  traderName?: string;
+  /** Registered address, when the member state discloses it. */
+  traderAddress?: string;
+  /** Whether VIES could answer for this country during the request. */
+  viesAvailable?: boolean;
+}
+
 /** Outcome of a single validation call. */
 export interface ValidationResult {
   /** Whether the value passed every check the applied level ran. */
@@ -95,6 +139,8 @@ export interface ValidationResult {
   validationLevel?: ValidationLevel;
   /** Present for email validations from `STANDARD` depth upward. */
   emailDetails?: EmailDetails;
+  /** Present for VAT validations. */
+  vatDetails?: VatDetails;
   /** Quota state reported by the response headers. */
   quota?: QuotaInfo;
   /** The unmodified JSON body, for fields this SDK version does not model yet. */

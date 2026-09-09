@@ -14,6 +14,7 @@ import type {
   RetryOptions,
   ValidationResult,
   ValidationRule,
+  VatDetails,
   VerifNowOptions,
 } from './types.js';
 import { VERSION } from './version.js';
@@ -402,6 +403,42 @@ function mapEmailDetails(raw: unknown): EmailDetails | undefined {
 }
 
 /**
+ * Reads `registered`, preserving the difference between `false` and `null`.
+ *
+ * `asBoolean` cannot be used here: it maps `null` to `undefined`, which would erase the one
+ * distinction the whole VAT design exists to carry. `false` means the registry answered and the
+ * number is not there; `null` means nobody could ask. A caller that cannot tell them apart will
+ * reject real businesses whenever VIES is down.
+ *
+ * A missing key is read as `null` for the same reason — unknown, not absent.
+ */
+function asRegistered(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function asDate(value: unknown): Date | undefined {
+  if (typeof value !== 'string') return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function mapVatDetails(raw: unknown): VatDetails | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+
+  return {
+    formatValid: asBoolean(d.format_valid),
+    registered: asRegistered(d.registered),
+    countryCode: asString(d.country_code),
+    source: asString(d.source) as VatDetails['source'],
+    checkedAt: asDate(d.checked_at),
+    traderName: asString(d.trader_name),
+    traderAddress: asString(d.trader_address),
+    viesAvailable: asBoolean(d.vies_available),
+  };
+}
+
+/**
  * Maps the API's snake_case diagnostics onto camelCase, so a TypeScript caller is not switching
  * naming conventions mid-expression. The untouched body stays available on `raw`.
  */
@@ -416,6 +453,7 @@ function mapResult(
     originalValue: asString(payload.originalValue),
     validationLevel: asString(payload.validationLevel) as ValidationResult['validationLevel'],
     emailDetails: mapEmailDetails(payload.emailDetails),
+    vatDetails: mapVatDetails(payload.vatDetails),
     quota,
     raw: payload,
   };

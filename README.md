@@ -45,6 +45,42 @@ if (signals?.typoDetected) {
 }
 ```
 
+## VAT and VIES
+
+VAT is the one validator whose answer can be *unknown* rather than yes or no. Registration is
+checked against VIES, the European Commission's registry, which publishes no SLA and drops member
+states several times a month.
+
+```ts
+const result = await client.validateVat('IE6388047V');
+const vat = result.vatDetails!;
+
+vat.formatValid;   // true — structural, decided locally, never depends on VIES
+vat.registered;    // true | false | null
+vat.source;        // 'LIVE' | 'CACHE' | 'STALE' | 'UNVERIFIED' | 'NOT_APPLICABLE'
+vat.traderName;    // 'GOOGLE IRELAND LIMITED' — when the member state discloses it
+```
+
+**`registered: null` means unknown, never "not registered."** It is what you get when VIES could
+not be consulted. Treating it as `false` rejects legitimate businesses during someone else's
+outage:
+
+```ts
+if (!vat.formatValid) return reject('That VAT number is not correctly formed.');
+if (vat.registered === false) return reject('That VAT number is not registered.');
+
+if (vat.registered === null) {
+  // Accept, record that it is unconfirmed, and re-check later.
+  await queueForRecheck(vatNumber);
+  return accept({ verified: false });
+}
+
+return accept({ verified: true, stale: vat.source === 'STALE' });
+```
+
+Per-country VIES availability is public and needs no API key:
+[`GET /api/v1/status/vies`](https://www.verifnow.io/en/status).
+
 ## Validators
 
 ```ts
@@ -70,6 +106,7 @@ interface ValidationResult {
   originalValue?: string;
   validationLevel?: ValidationLevel;
   emailDetails?: EmailDetails;     // email only
+  vatDetails?: VatDetails;         // VAT only
   quota?: QuotaInfo;               // from the X-RateLimit-* headers
   raw: Record<string, unknown>;    // untouched response body
 }
