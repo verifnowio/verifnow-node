@@ -251,6 +251,33 @@ describe('response mapping', () => {
     expect(result.vatDetails?.checkedAt?.toISOString()).toBe('2026-09-08T02:21:25.000Z');
   });
 
+  it('maps phone diagnostics', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        message: 'Valid phone number',
+        normalizedValue: '+33612345678',
+        originalValue: '+33 6 12 34 56 78',
+        validationLevel: 'STANDARD',
+        phoneDetails: {
+          country_code: 'FR',
+          calling_code: 33,
+          line_type: 'MOBILE',
+          international_format: '+33 6 12 34 56 78',
+          national_format: '06 12 34 56 78',
+        },
+      }),
+    );
+    const result = await client(impl).validatePhone('+33 6 12 34 56 78');
+
+    expect(result.normalizedValue).toBe('+33612345678');
+    expect(result.phoneDetails?.countryCode).toBe('FR');
+    expect(result.phoneDetails?.callingCode).toBe(33);
+    expect(result.phoneDetails?.lineType).toBe('MOBILE');
+    expect(result.phoneDetails?.internationalFormat).toBe('+33 6 12 34 56 78');
+    expect(result.phoneDetails?.nationalFormat).toBe('06 12 34 56 78');
+  });
+
   it('keeps registered:null distinct from registered:false', async () => {
     // The distinction this whole type exists to carry. `false` means the registry answered and
     // the number is not there; `null` means VIES could not be asked. A caller that cannot tell

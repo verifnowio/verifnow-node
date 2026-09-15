@@ -125,6 +125,45 @@ export interface VatDetails {
   viesAvailable?: boolean;
 }
 
+/**
+ * Kind of line, according to the country's numbering plan.
+ *
+ * A `PREMIUM_RATE` or `VOIP` number is still `valid` — it exists. This is how you decide to
+ * exclude one, rather than the API deciding for you.
+ */
+export type PhoneLineType =
+  | 'MOBILE'
+  | 'FIXED_LINE'
+  /** The plan does not distinguish the two — the case for the US and Canada. */
+  | 'FIXED_LINE_OR_MOBILE'
+  | 'TOLL_FREE'
+  | 'PREMIUM_RATE'
+  | 'SHARED_COST'
+  | 'VOIP'
+  | 'PERSONAL_NUMBER'
+  | 'PAGER'
+  | 'UAN'
+  | 'VOICEMAIL'
+  | 'UNKNOWN';
+
+/**
+ * Phone-specific diagnostics. Present whenever the input parsed as an international number —
+ * including when it is invalid for its country, so you can tell the user which country it was
+ * read as.
+ */
+export interface PhoneDetails {
+  /** ISO 3166-1 alpha-2 country, e.g. `FR`. Absent when the calling code is shared by several. */
+  countryCode?: string;
+  /** International calling code without the plus sign, e.g. `33`. */
+  callingCode?: number;
+  /** Absent when the number is invalid. */
+  lineType?: PhoneLineType;
+  /** e.g. `+33 6 12 34 56 78`. Absent when the number is invalid. */
+  internationalFormat?: string;
+  /** e.g. `06 12 34 56 78`. Absent when the number is invalid. */
+  nationalFormat?: string;
+}
+
 /** Outcome of a single validation call. */
 export interface ValidationResult {
   /** Whether the value passed every check the applied level ran. */
@@ -141,6 +180,8 @@ export interface ValidationResult {
   emailDetails?: EmailDetails;
   /** Present for VAT validations. */
   vatDetails?: VatDetails;
+  /** Present for phone validations. The E.164 form is `normalizedValue`. */
+  phoneDetails?: PhoneDetails;
   /** Quota state reported by the response headers. */
   quota?: QuotaInfo;
   /** The unmodified JSON body, for fields this SDK version does not model yet. */

@@ -10,6 +10,7 @@ import {
 import type {
   EmailDetails,
   EmailSignals,
+  PhoneDetails,
   QuotaInfo,
   RetryOptions,
   ValidationResult,
@@ -88,7 +89,12 @@ export class VerifNow {
     return this.validate('email', value, options);
   }
 
-  /** Validate a phone number in international format. */
+  /**
+   * Validate a phone number against its country's numbering plan.
+   *
+   * The number must include its country code (`+33…` or `0033…`). Valid numbers come back in
+   * E.164 as `normalizedValue`, with country and line type in `phoneDetails`.
+   */
   validatePhone(value: string, options?: RequestOptions): Promise<ValidationResult> {
     return this.validate('phone', value, options);
   }
@@ -438,6 +444,19 @@ function mapVatDetails(raw: unknown): VatDetails | undefined {
   };
 }
 
+function mapPhoneDetails(raw: unknown): PhoneDetails | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+
+  return {
+    countryCode: asString(d.country_code),
+    callingCode: asNumber(d.calling_code),
+    lineType: asString(d.line_type) as PhoneDetails['lineType'],
+    internationalFormat: asString(d.international_format),
+    nationalFormat: asString(d.national_format),
+  };
+}
+
 /**
  * Maps the API's snake_case diagnostics onto camelCase, so a TypeScript caller is not switching
  * naming conventions mid-expression. The untouched body stays available on `raw`.
@@ -454,6 +473,7 @@ function mapResult(
     validationLevel: asString(payload.validationLevel) as ValidationResult['validationLevel'],
     emailDetails: mapEmailDetails(payload.emailDetails),
     vatDetails: mapVatDetails(payload.vatDetails),
+    phoneDetails: mapPhoneDetails(payload.phoneDetails),
     quota,
     raw: payload,
   };

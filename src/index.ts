@@ -15,6 +15,8 @@ export {
   type Deliverability,
   type EmailDetails,
   type EmailSignals,
+  type PhoneDetails,
+  type PhoneLineType,
   type QuotaInfo,
   type RetryOptions,
   type RiskLevel,
