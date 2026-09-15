@@ -441,6 +441,7 @@ function mapVatDetails(raw: unknown): VatDetails | undefined {
     traderName: asString(d.trader_name),
     traderAddress: asString(d.trader_address),
     viesAvailable: asBoolean(d.vies_available),
+    consultationNumber: asString(d.consultation_number),
   };
 }
 

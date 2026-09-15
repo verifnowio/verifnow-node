@@ -123,6 +123,12 @@ export interface VatDetails {
   traderAddress?: string;
   /** Whether VIES could answer for this country during the request. */
   viesAvailable?: boolean;
+  /**
+   * The consultation number VIES issued for this lookup — the receipt a tax authority accepts as
+   * evidence that you checked. Present only when your account has its own VAT number configured,
+   * because VIES issues one only to an identified requester.
+   */
+  consultationNumber?: string;
 }
 
 /**

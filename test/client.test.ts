@@ -237,6 +237,7 @@ describe('response mapping', () => {
           trader_name: 'GOOGLE IRELAND LIMITED',
           trader_address: '3RD FLOOR, GORDON HOUSE, BARROW STREET, DUBLIN 4',
           vies_available: true,
+          consultation_number: 'WAPIAAAAX8k1abcd',
         },
       }),
     );
@@ -248,6 +249,7 @@ describe('response mapping', () => {
     expect(result.vatDetails?.source).toBe('LIVE');
     expect(result.vatDetails?.traderName).toBe('GOOGLE IRELAND LIMITED');
     expect(result.vatDetails?.viesAvailable).toBe(true);
+    expect(result.vatDetails?.consultationNumber).toBe('WAPIAAAAX8k1abcd');
     expect(result.vatDetails?.checkedAt?.toISOString()).toBe('2026-09-08T02:21:25.000Z');
   });
 
