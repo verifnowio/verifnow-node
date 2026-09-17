@@ -10,6 +10,7 @@ import {
 import type {
   EmailDetails,
   EmailSignals,
+  IbanDetails,
   PhoneDetails,
   QuotaInfo,
   RetryOptions,
@@ -99,7 +100,12 @@ export class VerifNow {
     return this.validate('phone', value, options);
   }
 
-  /** Validate an IBAN: country structure and check digits. */
+  /**
+   * Validate an IBAN against the SWIFT registry entry for its country, then its check digits.
+   *
+   * `ibanDetails` reports the two separately: check digits catch a typo, the registry catches an
+   * account number that could never exist in that country.
+   */
   validateIban(value: string, options?: RequestOptions): Promise<ValidationResult> {
     return this.validate('iban', value, options);
   }
@@ -458,6 +464,20 @@ function mapPhoneDetails(raw: unknown): PhoneDetails | undefined {
   };
 }
 
+function mapIbanDetails(raw: unknown): IbanDetails | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+
+  return {
+    countryCode: asString(d.country_code),
+    structureValid: asBoolean(d.structure_valid),
+    checksumValid: asBoolean(d.checksum_valid),
+    length: asNumber(d.length),
+    expectedLength: asNumber(d.expected_length),
+    formatted: asString(d.formatted),
+  };
+}
+
 /**
  * Maps the API's snake_case diagnostics onto camelCase, so a TypeScript caller is not switching
  * naming conventions mid-expression. The untouched body stays available on `raw`.
@@ -475,6 +495,7 @@ function mapResult(
     emailDetails: mapEmailDetails(payload.emailDetails),
     vatDetails: mapVatDetails(payload.vatDetails),
     phoneDetails: mapPhoneDetails(payload.phoneDetails),
+    ibanDetails: mapIbanDetails(payload.ibanDetails),
     quota,
     raw: payload,
   };

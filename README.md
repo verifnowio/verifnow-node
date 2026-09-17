@@ -108,6 +108,7 @@ interface ValidationResult {
   emailDetails?: EmailDetails;     // email only
   vatDetails?: VatDetails;         // VAT only
   phoneDetails?: PhoneDetails;     // phone only — country, lineType, formats
+  ibanDetails?: IbanDetails;       // IBAN only — structure and checksum, separately
   quota?: QuotaInfo;               // from the X-RateLimit-* headers
   raw: Record<string, unknown>;    // untouched response body
 }

@@ -253,6 +253,35 @@ describe('response mapping', () => {
     expect(result.vatDetails?.checkedAt?.toISOString()).toBe('2026-09-08T02:21:25.000Z');
   });
 
+  it('maps IBAN diagnostics, keeping structure and checksum apart', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: false,
+        message: 'A FR IBAN is 27 characters long',
+        normalizedValue: null,
+        originalValue: 'FR23111111111111111111111',
+        validationLevel: 'STANDARD',
+        ibanDetails: {
+          country_code: 'FR',
+          structure_valid: false,
+          checksum_valid: true,
+          length: 25,
+          expected_length: 27,
+        },
+      }),
+    );
+    const result = await client(impl).validateIban('FR23111111111111111111111');
+
+    // Valid check digits, impossible length: the distinction the two fields exist to carry.
+    expect(result.valid).toBe(false);
+    expect(result.ibanDetails?.checksumValid).toBe(true);
+    expect(result.ibanDetails?.structureValid).toBe(false);
+    expect(result.ibanDetails?.countryCode).toBe('FR');
+    expect(result.ibanDetails?.length).toBe(25);
+    expect(result.ibanDetails?.expectedLength).toBe(27);
+    expect(result.ibanDetails?.formatted).toBeUndefined();
+  });
+
   it('maps phone diagnostics', async () => {
     const { impl } = fetchReturning(
       jsonResponse({

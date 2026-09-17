@@ -170,6 +170,29 @@ export interface PhoneDetails {
   nationalFormat?: string;
 }
 
+/**
+ * IBAN-specific diagnostics. Present on `iban` validations.
+ *
+ * Structure and checksum are reported separately because they fail for different reasons:
+ * `structureValid` answers "could this be an account number in that country" (the SWIFT
+ * registry's length and layout), `checksumValid` answers "was it typed correctly" (mod-97).
+ * There is no bank name or BIC — that needs a registry the API does not hold.
+ */
+export interface IbanDetails {
+  /** The IBAN's country, from its first two characters. */
+  countryCode?: string;
+  /** Length and character layout match the registry entry for that country. */
+  structureValid?: boolean;
+  /** The mod-97 check digits are correct. */
+  checksumValid?: boolean;
+  /** Length of the value as submitted, spaces removed. */
+  length?: number;
+  /** Length the registry requires for that country; absent for an unknown country. */
+  expectedLength?: number;
+  /** Print format, in groups of four. Present only for a valid IBAN. */
+  formatted?: string;
+}
+
 /** Outcome of a single validation call. */
 export interface ValidationResult {
   /** Whether the value passed every check the applied level ran. */
@@ -188,6 +211,8 @@ export interface ValidationResult {
   vatDetails?: VatDetails;
   /** Present for phone validations. The E.164 form is `normalizedValue`. */
   phoneDetails?: PhoneDetails;
+  /** Present for IBAN validations. */
+  ibanDetails?: IbanDetails;
   /** Quota state reported by the response headers. */
   quota?: QuotaInfo;
   /** The unmodified JSON body, for fields this SDK version does not model yet. */

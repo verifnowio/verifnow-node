@@ -15,6 +15,7 @@ export {
   type Deliverability,
   type EmailDetails,
   type EmailSignals,
+  type IbanDetails,
   type PhoneDetails,
   type PhoneLineType,
   type QuotaInfo,
