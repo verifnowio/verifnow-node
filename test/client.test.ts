@@ -253,6 +253,31 @@ describe('response mapping', () => {
     expect(result.vatDetails?.checkedAt?.toISOString()).toBe('2026-09-08T02:21:25.000Z');
   });
 
+  it('maps Canadian SIN diagnostics', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        message: 'Valid SIN format, but numbers starting with 0 are not issued to individuals',
+        normalizedValue: '046454286',
+        originalValue: '046 454 286',
+        validationLevel: 'STANDARD',
+        nasDetails: {
+          checksum_valid: true,
+          temporary_resident: false,
+          individual_series: false,
+          formatted: '046 454 286',
+        },
+      }),
+    );
+    const result = await client(impl).validateNas('046 454 286');
+
+    expect(result.normalizedValue).toBe('046454286');
+    expect(result.nasDetails?.checksumValid).toBe(true);
+    expect(result.nasDetails?.temporaryResident).toBe(false);
+    expect(result.nasDetails?.individualSeries).toBe(false);
+    expect(result.nasDetails?.formatted).toBe('046 454 286');
+  });
+
   it('maps IBAN diagnostics, keeping structure and checksum apart', async () => {
     const { impl } = fetchReturning(
       jsonResponse({

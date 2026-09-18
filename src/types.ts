@@ -193,6 +193,31 @@ export interface IbanDetails {
   formatted?: string;
 }
 
+/**
+ * Canadian Social Insurance Number diagnostics. Present on `nas` validations.
+ *
+ * There is no province and no expiry date: the first digit no longer reliably identifies a
+ * province, and a temporary resident's SIN expires with their permit, which only the document
+ * shows.
+ */
+export interface NasDetails {
+  /** The Luhn check digit is correct. */
+  checksumValid?: boolean;
+  /**
+   * A 9-series number, issued to temporary residents. It expires with the holder's permit, and the
+   * number itself does not say when — check the document.
+   */
+  temporaryResident?: boolean;
+  /**
+   * The first digit belongs to a series issued to individuals. `false` for numbers starting with
+   * 0 or 8 — including 046 454 286, the government's sample number, which is why it is safe to
+   * use in tests.
+   */
+  individualSeries?: boolean;
+  /** Printed form, e.g. `046 454 286`. */
+  formatted?: string;
+}
+
 /** Outcome of a single validation call. */
 export interface ValidationResult {
   /** Whether the value passed every check the applied level ran. */
@@ -213,6 +238,8 @@ export interface ValidationResult {
   phoneDetails?: PhoneDetails;
   /** Present for IBAN validations. */
   ibanDetails?: IbanDetails;
+  /** Present for Canadian SIN (`nas`) validations. */
+  nasDetails?: NasDetails;
   /** Quota state reported by the response headers. */
   quota?: QuotaInfo;
   /** The unmodified JSON body, for fields this SDK version does not model yet. */

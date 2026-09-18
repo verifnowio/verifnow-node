@@ -109,6 +109,7 @@ interface ValidationResult {
   vatDetails?: VatDetails;         // VAT only
   phoneDetails?: PhoneDetails;     // phone only — country, lineType, formats
   ibanDetails?: IbanDetails;       // IBAN only — structure and checksum, separately
+  nasDetails?: NasDetails;         // Canadian SIN only — temporary resident, series
   quota?: QuotaInfo;               // from the X-RateLimit-* headers
   raw: Record<string, unknown>;    // untouched response body
 }

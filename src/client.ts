@@ -11,6 +11,7 @@ import type {
   EmailDetails,
   EmailSignals,
   IbanDetails,
+  NasDetails,
   PhoneDetails,
   QuotaInfo,
   RetryOptions,
@@ -115,7 +116,12 @@ export class VerifNow {
     return this.validate('vat', value, options);
   }
 
-  /** Validate a Canadian Social Insurance Number. */
+  /**
+   * Validate a Canadian Social Insurance Number: format and Luhn check digit.
+   *
+   * `nasDetails` flags a temporary resident's number (it expires with their permit) and numbers
+   * from series not issued to individuals. Only collect a SIN where the law requires it.
+   */
   validateNas(value: string, options?: RequestOptions): Promise<ValidationResult> {
     return this.validate('nas', value, options);
   }
@@ -478,6 +484,18 @@ function mapIbanDetails(raw: unknown): IbanDetails | undefined {
   };
 }
 
+function mapNasDetails(raw: unknown): NasDetails | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+
+  return {
+    checksumValid: asBoolean(d.checksum_valid),
+    temporaryResident: asBoolean(d.temporary_resident),
+    individualSeries: asBoolean(d.individual_series),
+    formatted: asString(d.formatted),
+  };
+}
+
 /**
  * Maps the API's snake_case diagnostics onto camelCase, so a TypeScript caller is not switching
  * naming conventions mid-expression. The untouched body stays available on `raw`.
@@ -496,6 +514,7 @@ function mapResult(
     vatDetails: mapVatDetails(payload.vatDetails),
     phoneDetails: mapPhoneDetails(payload.phoneDetails),
     ibanDetails: mapIbanDetails(payload.ibanDetails),
+    nasDetails: mapNasDetails(payload.nasDetails),
     quota,
     raw: payload,
   };
