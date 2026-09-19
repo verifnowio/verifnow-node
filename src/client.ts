@@ -12,6 +12,7 @@ import type {
   EmailSignals,
   IbanDetails,
   NasDetails,
+  NifDetails,
   PhoneDetails,
   QuotaInfo,
   RetryOptions,
@@ -131,7 +132,12 @@ export class VerifNow {
     return this.validate('ssn', value, options);
   }
 
-  /** Validate a Spanish/Portuguese NIF. */
+  /**
+   * Validate a Spanish NIF: a DNI, a NIE (foreign nationals), the K/L/M series, or a company NIF.
+   *
+   * `nifDetails` says which, whether it belongs to a person, and for a company its legal form.
+   * Spanish only — a Portuguese NIF is a different scheme and is not accepted here.
+   */
   validateNif(value: string, options?: RequestOptions): Promise<ValidationResult> {
     return this.validate('nif', value, options);
   }
@@ -496,6 +502,19 @@ function mapNasDetails(raw: unknown): NasDetails | undefined {
   };
 }
 
+function mapNifDetails(raw: unknown): NifDetails | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+
+  return {
+    type: asString(d.type) as NifDetails['type'],
+    naturalPerson: asBoolean(d.natural_person),
+    checksumValid: asBoolean(d.checksum_valid),
+    entityLetter: asString(d.entity_letter),
+    entityType: asString(d.entity_type),
+  };
+}
+
 /**
  * Maps the API's snake_case diagnostics onto camelCase, so a TypeScript caller is not switching
  * naming conventions mid-expression. The untouched body stays available on `raw`.
@@ -515,6 +534,7 @@ function mapResult(
     phoneDetails: mapPhoneDetails(payload.phoneDetails),
     ibanDetails: mapIbanDetails(payload.ibanDetails),
     nasDetails: mapNasDetails(payload.nasDetails),
+    nifDetails: mapNifDetails(payload.nifDetails),
     quota,
     raw: payload,
   };

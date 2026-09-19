@@ -17,6 +17,8 @@ export {
   type EmailSignals,
   type IbanDetails,
   type NasDetails,
+  type NifDetails,
+  type NifType,
   type PhoneDetails,
   type PhoneLineType,
   type QuotaInfo,

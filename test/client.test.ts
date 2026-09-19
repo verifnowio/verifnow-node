@@ -253,6 +253,32 @@ describe('response mapping', () => {
     expect(result.vatDetails?.checkedAt?.toISOString()).toBe('2026-09-08T02:21:25.000Z');
   });
 
+  it('maps Spanish NIF diagnostics', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        message: 'Valid NIF',
+        normalizedValue: 'B12345674',
+        originalValue: 'B-12345674',
+        validationLevel: 'STANDARD',
+        nifDetails: {
+          type: 'ENTITY',
+          natural_person: false,
+          checksum_valid: true,
+          entity_letter: 'B',
+          entity_type: 'Private limited company (Sociedad de responsabilidad limitada)',
+        },
+      }),
+    );
+    const result = await client(impl).validateNif('B-12345674');
+
+    expect(result.nifDetails?.type).toBe('ENTITY');
+    expect(result.nifDetails?.naturalPerson).toBe(false);
+    expect(result.nifDetails?.checksumValid).toBe(true);
+    expect(result.nifDetails?.entityLetter).toBe('B');
+    expect(result.nifDetails?.entityType).toContain('Private limited company');
+  });
+
   it('maps Canadian SIN diagnostics', async () => {
     const { impl } = fetchReturning(
       jsonResponse({

@@ -218,6 +218,34 @@ export interface NasDetails {
   formatted?: string;
 }
 
+/** The kinds of Spanish tax identification number. */
+export type NifType =
+  /** Spanish national with a DNI: 8 digits and a letter. */
+  | 'DNI'
+  /** Foreign national: X, Y or Z, 7 digits and a letter. */
+  | 'NIE'
+  /** Spanish national under 14 without a DNI. */
+  | 'NIF_K'
+  /** Spanish national resident abroad, staying under six months. */
+  | 'NIF_L'
+  /** Foreign national without a NIE. */
+  | 'NIF_M'
+  /** A company or other entity: a letter for the legal form, 7 digits, a control character. */
+  | 'ENTITY';
+
+/** Spanish NIF diagnostics. Present on `nif` validations. */
+export interface NifDetails {
+  type?: NifType;
+  /** The number belongs to a person rather than a company or other entity. */
+  naturalPerson?: boolean;
+  /** The control character is correct. */
+  checksumValid?: boolean;
+  /** For an entity, the letter that encodes its legal form, e.g. `B`. */
+  entityLetter?: string;
+  /** For an entity, its legal form, e.g. `Private limited company (Sociedad de responsabilidad limitada)`. */
+  entityType?: string;
+}
+
 /** Outcome of a single validation call. */
 export interface ValidationResult {
   /** Whether the value passed every check the applied level ran. */
@@ -240,6 +268,8 @@ export interface ValidationResult {
   ibanDetails?: IbanDetails;
   /** Present for Canadian SIN (`nas`) validations. */
   nasDetails?: NasDetails;
+  /** Present for Spanish NIF validations. */
+  nifDetails?: NifDetails;
   /** Quota state reported by the response headers. */
   quota?: QuotaInfo;
   /** The unmodified JSON body, for fields this SDK version does not model yet. */

@@ -90,7 +90,7 @@ await client.validateIban('FR7630006000011234567890189');
 await client.validateVat('FR12345678901');
 await client.validateNas('046454286');       // Canadian Social Insurance Number
 await client.validateSsn('123-45-6789');     // US Social Security Number
-await client.validateNif('12345678Z');       // Spanish / Portuguese NIF
+await client.validateNif('B12345674');       // Spanish NIF — DNI, NIE or company
 
 // When the rule is only known at runtime
 await client.validate('iban', value);
@@ -110,6 +110,7 @@ interface ValidationResult {
   phoneDetails?: PhoneDetails;     // phone only — country, lineType, formats
   ibanDetails?: IbanDetails;       // IBAN only — structure and checksum, separately
   nasDetails?: NasDetails;         // Canadian SIN only — temporary resident, series
+  nifDetails?: NifDetails;         // Spanish NIF only — DNI, NIE or company, legal form
   quota?: QuotaInfo;               // from the X-RateLimit-* headers
   raw: Record<string, unknown>;    // untouched response body
 }
