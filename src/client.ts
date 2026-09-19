@@ -13,6 +13,7 @@ import type {
   IbanDetails,
   NasDetails,
   NifDetails,
+  SsnDetails,
   PhoneDetails,
   QuotaInfo,
   RetryOptions,
@@ -127,7 +128,12 @@ export class VerifNow {
     return this.validate('nas', value, options);
   }
 
-  /** Validate a US Social Security Number. */
+  /**
+   * Validate a US Social Security Number against the numbers the SSA never issues.
+   *
+   * An SSN has no check digit: a typo that lands on another possible number cannot be caught, and
+   * only the SSA can confirm a number was issued. `ssnDetails.itin` flags an IRS ITIN.
+   */
   validateSsn(value: string, options?: RequestOptions): Promise<ValidationResult> {
     return this.validate('ssn', value, options);
   }
@@ -515,6 +521,13 @@ function mapNifDetails(raw: unknown): NifDetails | undefined {
   };
 }
 
+function mapSsnDetails(raw: unknown): SsnDetails | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+
+  return { itin: asBoolean(d.itin) };
+}
+
 /**
  * Maps the API's snake_case diagnostics onto camelCase, so a TypeScript caller is not switching
  * naming conventions mid-expression. The untouched body stays available on `raw`.
@@ -535,6 +548,7 @@ function mapResult(
     ibanDetails: mapIbanDetails(payload.ibanDetails),
     nasDetails: mapNasDetails(payload.nasDetails),
     nifDetails: mapNifDetails(payload.nifDetails),
+    ssnDetails: mapSsnDetails(payload.ssnDetails),
     quota,
     raw: payload,
   };

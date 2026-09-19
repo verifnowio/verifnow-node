@@ -246,6 +246,21 @@ export interface NifDetails {
   entityType?: string;
 }
 
+/**
+ * US SSN diagnostics. Present on `ssn` validations.
+ *
+ * An SSN has no check digit, and since 2011 its first digits say nothing about a state, so there is
+ * little a number can reveal about itself. The one thing worth knowing is whether it is an ITIN.
+ */
+export interface SsnDetails {
+  /**
+   * The number is an IRS ITIN, not an SSN: it starts with 9 and its fourth and fifth digits are in
+   * 50-65, 70-88, 90-92 or 94-99. `valid` is `false` for the SSN, but an ITIN is an acceptable
+   * taxpayer number where one is accepted (a W-9, for instance).
+   */
+  itin?: boolean;
+}
+
 /** Outcome of a single validation call. */
 export interface ValidationResult {
   /** Whether the value passed every check the applied level ran. */
@@ -270,6 +285,8 @@ export interface ValidationResult {
   nasDetails?: NasDetails;
   /** Present for Spanish NIF validations. */
   nifDetails?: NifDetails;
+  /** Present for US SSN validations. */
+  ssnDetails?: SsnDetails;
   /** Quota state reported by the response headers. */
   quota?: QuotaInfo;
   /** The unmodified JSON body, for fields this SDK version does not model yet. */

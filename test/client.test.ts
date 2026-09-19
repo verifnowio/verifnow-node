@@ -253,6 +253,23 @@ describe('response mapping', () => {
     expect(result.vatDetails?.checkedAt?.toISOString()).toBe('2026-09-08T02:21:25.000Z');
   });
 
+  it('maps US SSN diagnostics', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: false,
+        message: 'That is an ITIN, not an SSN',
+        normalizedValue: null,
+        originalValue: '9xx-78-xxxx',
+        validationLevel: 'STANDARD',
+        ssnDetails: { itin: true },
+      }),
+    );
+    const result = await client(impl).validateSsn('9xx-78-xxxx');
+
+    expect(result.valid).toBe(false);
+    expect(result.ssnDetails?.itin).toBe(true);
+  });
+
   it('maps Spanish NIF diagnostics', async () => {
     const { impl } = fetchReturning(
       jsonResponse({

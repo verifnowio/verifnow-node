@@ -19,6 +19,7 @@ export {
   type NasDetails,
   type NifDetails,
   type NifType,
+  type SsnDetails,
   type PhoneDetails,
   type PhoneLineType,
   type QuotaInfo,
