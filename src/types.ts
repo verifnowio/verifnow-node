@@ -181,6 +181,12 @@ export interface PhoneDetails {
 export interface IbanDetails {
   /** The IBAN's country, from its first two characters. */
   countryCode?: string;
+  /**
+   * The country is inside the SEPA schemes' geographical scope, so a bank there may collect a
+   * SEPA direct debit. Whether this particular bank does is published per bank, not per country,
+   * and cannot be read from an IBAN.
+   */
+  sepa?: boolean;
   /** Length and character layout match the registry entry for that country. */
   structureValid?: boolean;
   /** The mod-97 check digits are correct. */

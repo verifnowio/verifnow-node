@@ -108,7 +108,7 @@ interface ValidationResult {
   emailDetails?: EmailDetails;     // email only
   vatDetails?: VatDetails;         // VAT only
   phoneDetails?: PhoneDetails;     // phone only — country, lineType, formats
-  ibanDetails?: IbanDetails;       // IBAN only — structure and checksum, separately
+  ibanDetails?: IbanDetails;       // IBAN only — structure, checksum and SEPA scope
   nasDetails?: NasDetails;         // Canadian SIN only — temporary resident, series
   nifDetails?: NifDetails;         // Spanish NIF only — DNI, NIE or company, legal form
   ssnDetails?: SsnDetails;         // US SSN only — whether the number is an ITIN

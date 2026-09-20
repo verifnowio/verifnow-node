@@ -321,6 +321,31 @@ describe('response mapping', () => {
     expect(result.nasDetails?.formatted).toBe('046 454 286');
   });
 
+  it('reports an IBAN outside SEPA as valid but not collectable', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        message: 'Valid IBAN',
+        normalizedValue: 'EG800000000000000000000000000',
+        originalValue: 'EG800000000000000000000000000',
+        validationLevel: 'STANDARD',
+        ibanDetails: {
+          country_code: 'EG',
+          sepa: false,
+          structure_valid: true,
+          checksum_valid: true,
+          length: 29,
+          expected_length: 29,
+        },
+      }),
+    );
+    const result = await client(impl).validateIban('EG800000000000000000000000000');
+
+    // Nothing is wrong with the number; a SEPA direct debit against it could only fail.
+    expect(result.valid).toBe(true);
+    expect(result.ibanDetails?.sepa).toBe(false);
+  });
+
   it('maps IBAN diagnostics, keeping structure and checksum apart', async () => {
     const { impl } = fetchReturning(
       jsonResponse({
@@ -331,6 +356,7 @@ describe('response mapping', () => {
         validationLevel: 'STANDARD',
         ibanDetails: {
           country_code: 'FR',
+          sepa: true,
           structure_valid: false,
           checksum_valid: true,
           length: 25,
@@ -348,6 +374,7 @@ describe('response mapping', () => {
     expect(result.ibanDetails?.length).toBe(25);
     expect(result.ibanDetails?.expectedLength).toBe(27);
     expect(result.ibanDetails?.formatted).toBeUndefined();
+    expect(result.ibanDetails?.sepa).toBe(true);
   });
 
   it('maps phone diagnostics', async () => {

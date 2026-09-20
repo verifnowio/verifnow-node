@@ -488,6 +488,7 @@ function mapIbanDetails(raw: unknown): IbanDetails | undefined {
 
   return {
     countryCode: asString(d.country_code),
+    sepa: asBoolean(d.sepa),
     structureValid: asBoolean(d.structure_valid),
     checksumValid: asBoolean(d.checksum_valid),
     length: asNumber(d.length),
