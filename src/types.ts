@@ -299,6 +299,50 @@ export interface ValidationResult {
   raw: Record<string, unknown>;
 }
 
+/** A VAT rate applying to part of a member state only — an overseas department, an island. */
+export interface RegionalVatRate {
+  rate: number;
+  /** Where it applies, in the words of the Commission's TEDB. */
+  note?: string;
+}
+
+/**
+ * One EU member state's VAT rates, from the European Commission's TEDB.
+ *
+ * These are the rates the member state has, not the rate a sale is charged: which one applies
+ * depends on who sells to whom and what. In B2B trade between member states the invoice is usually
+ * zero-rated under the reverse charge, whatever the buyer's country rate is.
+ */
+export interface CountryVatRates {
+  /** Member state as TEDB and VIES name it: Greece is `EL`. */
+  countryCode: string;
+  /** The national standard rate, e.g. `20` for France. */
+  standardRate: number;
+  /**
+   * Every reduced, super-reduced and parking rate on the mainland territory, ascending.
+   * TEDB's own sub-labels are inconsistent between member states, so they are not reproduced.
+   */
+  reducedRates: number[];
+  /** Rates for part of the territory only, e.g. 8.5 % in Martinique, Guadeloupe and Réunion. */
+  regionalRates: RegionalVatRate[];
+  /**
+   * The date TEDB says these rates apply from, as `YYYY-MM-DD`. Kept as a string: a date without
+   * a time zone turned into a `Date` can land on the previous day.
+   */
+  situationOn?: string;
+  /** When VerifNow last retrieved them from TEDB. */
+  fetchedAt?: Date;
+}
+
+/** VAT rates of every EU member state. */
+export interface VatRates {
+  /** Always `TEDB`, the Commission's Taxes in Europe Database. */
+  source: string;
+  sourceUrl?: string;
+  /** One entry per member state retrieved so far — normally all 27. */
+  rates: CountryVatRates[];
+}
+
 /** Quota counters read from the `X-RateLimit-*` response headers. */
 export interface QuotaInfo {
   /** Validations included in the current billing period. */

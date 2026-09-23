@@ -81,6 +81,29 @@ return accept({ verified: true, stale: vat.source === 'STALE' });
 Per-country VIES availability is public and needs no API key:
 [`GET /api/v1/status/vies`](https://www.verifnow.io/en/status).
 
+### VAT rates
+
+The rates of the 27 member states, retrieved daily from the Commission's
+[TEDB](https://ec.europa.eu/taxation_customs/tedb/). Public reference data: these calls spend no
+quota.
+
+```ts
+const france = await client.vatRate('FR');   // GR is accepted for Greece (EL)
+
+france.standardRate;    // 20
+france.reducedRates;    // [2.1, 5.5, 10] — which one applies depends on the product
+france.regionalRates;   // [{ rate: 8.5, note: 'The standard VAT rate in Martinique, …' }, …]
+france.situationOn;     // '2026-07-01' — the date TEDB says these rates apply from
+france.fetchedAt;       // Date — when VerifNow last retrieved them
+
+const all = await client.vatRates();         // all.rates: one entry per member state
+```
+
+**These are the rates a member state has, not the rate an invoice carries.** In B2B trade between
+member states the invoice is usually zero-rated under the reverse charge, whatever the buyer's
+country rate is. Multiplying an amount by the buyer's standard rate is wrong in exactly the case a
+VAT number is collected for.
+
 ## Validators
 
 ```ts

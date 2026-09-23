@@ -12,6 +12,7 @@ export {
 
 export {
   VALIDATION_RULES,
+  type CountryVatRates,
   type Deliverability,
   type EmailDetails,
   type EmailSignals,
@@ -23,12 +24,14 @@ export {
   type PhoneDetails,
   type PhoneLineType,
   type QuotaInfo,
+  type RegionalVatRate,
   type RetryOptions,
   type RiskLevel,
   type ValidationLevel,
   type ValidationResult,
   type ValidationRule,
   type VatDetails,
+  type VatRates,
   type VatSource,
   type VerifNowOptions,
 } from './types.js';

@@ -8,6 +8,7 @@ import {
   VerifNowServerError,
 } from './errors.js';
 import type {
+  CountryVatRates,
   EmailDetails,
   EmailSignals,
   IbanDetails,
@@ -20,6 +21,7 @@ import type {
   ValidationResult,
   ValidationRule,
   VatDetails,
+  VatRates,
   VerifNowOptions,
 } from './types.js';
 import { VERSION } from './version.js';
@@ -167,13 +169,49 @@ export class VerifNow {
 
     const url = `${this.#baseUrl}/api/v1/validate/${rule}`;
     const body = JSON.stringify({ value });
+    return this.#withRetry(() =>
+      this.#requestOnce('POST', url, body, options, (payload, quota) => mapResult(payload, quota)),
+    );
+  }
+
+  /**
+   * EU VAT rates of every member state, from the European Commission's TEDB.
+   *
+   * Public reference data: the call spends no quota. These are the rates a member state has, not
+   * the rate a sale is charged — in B2B trade between member states the invoice is usually
+   * zero-rated under the reverse charge whatever the buyer's country rate is.
+   */
+  async vatRates(options: RequestOptions = {}): Promise<VatRates> {
+    const url = `${this.#baseUrl}/api/v1/vat/rates`;
+    return this.#withRetry(() =>
+      this.#requestOnce('GET', url, undefined, options, (payload) => mapVatRates(payload)),
+    );
+  }
+
+  /**
+   * One EU member state's VAT rates. Accepts `GR` for Greece as well as `EL`.
+   *
+   * A code outside the 27 member states throws {@link VerifNowRequestError} (HTTP 404).
+   */
+  async vatRate(countryCode: string, options: RequestOptions = {}): Promise<CountryVatRates> {
+    if (typeof countryCode !== 'string' || countryCode.trim() === '') {
+      throw new VerifNowRequestError('A member state code is required, e.g. "FR".');
+    }
+    const url = `${this.#baseUrl}/api/v1/vat/rates/${encodeURIComponent(countryCode.trim())}`;
+    return this.#withRetry(() =>
+      this.#requestOnce('GET', url, undefined, options, (payload) => mapCountryVatRates(payload)),
+    );
+  }
+
+  /** Runs one request under the retry policy. */
+  async #withRetry<T>(attemptOnce: () => Promise<T>): Promise<T> {
     const maxAttempts = this.#retry ? this.#retry.attempts + 1 : 1;
 
     let lastError: VerifNowError | undefined;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        return await this.#requestOnce(url, body, options);
+        return await attemptOnce();
       } catch (error) {
         if (!(error instanceof VerifNowError)) throw error;
         lastError = error;
@@ -216,11 +254,13 @@ export class VerifNow {
     return null;
   }
 
-  async #requestOnce(
+  async #requestOnce<T>(
+    method: 'GET' | 'POST',
     url: string,
-    body: string,
+    body: string | undefined,
     options: RequestOptions,
-  ): Promise<ValidationResult> {
+    map: (payload: Record<string, unknown>, quota: QuotaInfo | undefined) => T,
+  ): Promise<T> {
     const timeoutMs = options.timeoutMs ?? this.#timeoutMs;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -230,10 +270,10 @@ export class VerifNow {
     let response: Response;
     try {
       response = await this.#fetch(url, {
-        method: 'POST',
+        method,
         headers: {
           ...this.#headers,
-          'Content-Type': 'application/json',
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
           Accept: 'application/json',
           'X-API-KEY': this.#apiKey,
           'X-VerifNow-SDK': `node/${VERSION}`,
@@ -257,10 +297,13 @@ export class VerifNow {
       options.signal?.removeEventListener('abort', abortFromCaller);
     }
 
-    return this.#handleResponse(response);
+    return this.#handleResponse(response, map);
   }
 
-  async #handleResponse(response: Response): Promise<ValidationResult> {
+  async #handleResponse<T>(
+    response: Response,
+    map: (payload: Record<string, unknown>, quota: QuotaInfo | undefined) => T,
+  ): Promise<T> {
     const requestId = response.headers.get('X-Request-Id') ?? undefined;
     const quota = parseQuota(response.headers);
 
@@ -282,7 +325,7 @@ export class VerifNow {
         );
       }
 
-      return mapResult(payload as Record<string, unknown>, quota);
+      return map(payload as Record<string, unknown>, quota);
     }
 
     const message = await readErrorMessage(response);
@@ -533,6 +576,37 @@ function mapSsnDetails(raw: unknown): SsnDetails | undefined {
  * Maps the API's snake_case diagnostics onto camelCase, so a TypeScript caller is not switching
  * naming conventions mid-expression. The untouched body stays available on `raw`.
  */
+function mapCountryVatRates(raw: Record<string, unknown>): CountryVatRates {
+  const numbers = (value: unknown): number[] =>
+    Array.isArray(value) ? value.filter((v): v is number => asNumber(v) !== undefined) : [];
+
+  return {
+    countryCode: asString(raw.countryCode) ?? '',
+    standardRate: asNumber(raw.standardRate) ?? Number.NaN,
+    reducedRates: numbers(raw.reducedRates),
+    regionalRates: Array.isArray(raw.regionalRates)
+      ? raw.regionalRates
+          .filter((r): r is Record<string, unknown> => r !== null && typeof r === 'object')
+          .map((r) => ({ rate: asNumber(r.rate) ?? Number.NaN, note: asString(r.note) }))
+      : [],
+    situationOn: asString(raw.situationOn),
+    fetchedAt: asDate(raw.fetchedAt),
+  };
+}
+
+function mapVatRates(raw: Record<string, unknown>): VatRates {
+  const rates = Array.isArray(raw.rates)
+    ? raw.rates
+        .filter((r): r is Record<string, unknown> => r !== null && typeof r === 'object')
+        .map(mapCountryVatRates)
+    : [];
+  return {
+    source: asString(raw.source) ?? 'TEDB',
+    sourceUrl: asString(raw.sourceUrl),
+    rates,
+  };
+}
+
 function mapResult(
   payload: Record<string, unknown>,
   quota: QuotaInfo | undefined,

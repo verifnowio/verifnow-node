@@ -657,3 +657,104 @@ describe('packaging', () => {
     expect(VERSION).toBe(pkg.version);
   });
 });
+
+describe('VAT rates', () => {
+  const FRANCE = {
+    countryCode: 'FR',
+    standardRate: 20,
+    reducedRates: [2.1, 5.5, 10],
+    regionalRates: [
+      { rate: 8.5, note: 'The standard VAT rate in Martinique, Guadeloupe and Réunion is 8.5%.' },
+      { rate: 13, note: 'For Corsica: rate of 13% on oil products.' },
+    ],
+    situationOn: '2026-07-01',
+    fetchedAt: '2026-09-23T02:52:37Z',
+  };
+
+  it('reads one member state with a GET and no body', async () => {
+    const { impl, calls } = fetchReturning(jsonResponse(FRANCE));
+
+    const rates = await client(impl).vatRate('fr');
+
+    expect(calls[0]!.url).toBe('https://api.verifnow.io/api/v1/vat/rates/fr');
+    expect(calls[0]!.init.method).toBe('GET');
+    expect(calls[0]!.init.body).toBeUndefined();
+    // No body, so no Content-Type claiming one.
+    expect((calls[0]!.init.headers as Record<string, string>)['Content-Type']).toBeUndefined();
+
+    expect(rates.countryCode).toBe('FR');
+    expect(rates.standardRate).toBe(20);
+    expect(rates.reducedRates).toEqual([2.1, 5.5, 10]);
+    expect(rates.regionalRates.map((r) => r.rate)).toEqual([8.5, 13]);
+    expect(rates.regionalRates[1]!.note).toMatch(/^For Corsica/);
+    // A date without a time zone stays a string: new Date('2026-07-01') is 30 June in the Americas.
+    expect(rates.situationOn).toBe('2026-07-01');
+    expect(rates.fetchedAt).toEqual(new Date('2026-09-23T02:52:37Z'));
+  });
+
+  it('reads every member state', async () => {
+    const { impl, calls } = fetchReturning(
+      jsonResponse({
+        source: 'TEDB',
+        sourceUrl: 'https://ec.europa.eu/taxation_customs/tedb/',
+        countries: 2,
+        rates: [
+          { ...FRANCE },
+          { countryCode: 'DK', standardRate: 25, reducedRates: [], regionalRates: [], situationOn: '2026-07-01' },
+        ],
+      }),
+    );
+
+    const all = await client(impl).vatRates();
+
+    expect(calls[0]!.url).toBe('https://api.verifnow.io/api/v1/vat/rates');
+    expect(all.source).toBe('TEDB');
+    expect(all.rates.map((r) => r.countryCode)).toEqual(['FR', 'DK']);
+    // Denmark has no reduced rate — an empty list, not a 0.
+    expect(all.rates[1]!.reducedRates).toEqual([]);
+  });
+
+  it('escapes the country code into the path', async () => {
+    const { impl, calls } = fetchReturning(jsonResponse(FRANCE));
+
+    await client(impl).vatRate(' F/R ');
+
+    expect(calls[0]!.url).toBe('https://api.verifnow.io/api/v1/vat/rates/F%2FR');
+  });
+
+  it('turns a country outside the union into a request error, not a retry', async () => {
+    const { impl, calls } = fetchReturning(
+      jsonResponse(
+        { status: 404, message: 'Not an EU member state: US. VAT rates are published for the 27 member states; Greece is EL.' },
+        { status: 404 },
+      ),
+    );
+
+    await expect(client(impl).vatRate('US')).rejects.toMatchObject({
+      name: 'VerifNowRequestError',
+      status: 404,
+    });
+    await expect(client(impl).vatRate('US')).rejects.toThrow(/Not an EU member state: US/);
+    // 404 answers the same the second time; retrying would only spend time.
+    expect(calls).toHaveLength(2);
+  });
+
+  it('retries a 503 while the first snapshot is being retrieved', async () => {
+    const { impl, calls } = fetchReturning(
+      jsonResponse({ status: 503, message: 'VAT rates have not been retrieved from TEDB yet' }, { status: 503 }),
+      jsonResponse(FRANCE),
+    );
+
+    const rates = await client(impl).vatRate('FR');
+
+    expect(calls).toHaveLength(2);
+    expect(rates.standardRate).toBe(20);
+  });
+
+  it('rejects an empty country code without calling the API', async () => {
+    const { impl, calls } = fetchReturning(jsonResponse(FRANCE));
+
+    await expect(client(impl).vatRate('  ')).rejects.toBeInstanceOf(VerifNowRequestError);
+    expect(calls).toHaveLength(0);
+  });
+});
