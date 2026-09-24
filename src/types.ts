@@ -88,6 +88,12 @@ export interface EmailDetails {
  * always a live one. Branch on this rather than on `ValidationResult.valid` whenever the
  * difference matters for your own compliance.
  */
+/** Whether a supplied company name belongs to a VAT number's registered holder. */
+export type TraderNameMatch = 'MATCH' | 'MISMATCH' | 'NOT_AVAILABLE';
+
+/** Who compared the names. */
+export type TraderNameMatchSource = 'VIES' | 'VERIFNOW';
+
 export type VatSource =
   /** Confirmed against VIES during this request. */
   | 'LIVE'
@@ -129,6 +135,13 @@ export interface VatDetails {
    * because VIES issues one only to an identified requester.
    */
   consultationNumber?: string;
+  /**
+   * Present when a `traderName` was sent: whether it belongs to the registered holder. `MISMATCH`
+   * is a question for a human, not proof of fraud — trading names and group companies differ.
+   */
+  traderNameMatch?: TraderNameMatch;
+  /** Who compared: `VERIFNOW`, against the name VIES published, or `VIES` itself (Spain). */
+  traderNameMatchSource?: TraderNameMatchSource;
 }
 
 /**
@@ -304,6 +317,12 @@ export interface RegionalVatRate {
   rate: number;
   /** Where it applies, in the words of the Commission's TEDB. */
   note?: string;
+  /**
+   * `false` for the Canary Islands and the French overseas territories, which the VAT Directive
+   * excludes (Article 6(1)): goods shipped there from another member state are an export, not a
+   * distance sale at this rate.
+   */
+  euVatArea?: boolean;
 }
 
 /**

@@ -758,3 +758,73 @@ describe('VAT rates', () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe('supplier name check', () => {
+  it('sends traderName with the VAT number, and maps the answer', async () => {
+    const { impl, calls } = fetchReturning(
+      jsonResponse({
+        valid: true,
+        message: 'Valid VAT number',
+        normalizedValue: 'ESA28015865',
+        originalValue: 'ESA28015865',
+        vatDetails: {
+          format_valid: true,
+          registered: true,
+          country_code: 'ES',
+          source: 'LIVE',
+          vies_available: true,
+          trader_name_match: 'MATCH',
+          trader_name_match_source: 'VIES',
+        },
+      }),
+    );
+
+    const result = await client(impl).validateVat('ESA28015865', { traderName: 'Telefonica' });
+
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
+      value: 'ESA28015865',
+      traderName: 'Telefonica',
+    });
+    expect(result.vatDetails?.traderNameMatch).toBe('MATCH');
+    expect(result.vatDetails?.traderNameMatchSource).toBe('VIES');
+  });
+
+  it('sends no traderName when none, or a blank one, is given', async () => {
+    const { impl, calls } = fetchReturning(jsonResponse({ valid: true, vatDetails: { registered: true } }));
+
+    await client(impl).validateVat('IE6388047V');
+    await client(impl).validateVat('IE6388047V', { traderName: '  ' });
+
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({ value: 'IE6388047V' });
+    expect(JSON.parse(String(calls[1]!.init.body))).toEqual({ value: 'IE6388047V' });
+  });
+
+  it('still honours per-call options alongside traderName', async () => {
+    const { impl } = fetchReturning(jsonResponse({ valid: true }));
+    const controller = new AbortController();
+
+    await expect(
+      client(impl).validateVat('IE6388047V', { traderName: 'Google Ireland Ltd', signal: controller.signal }),
+    ).resolves.toMatchObject({ valid: true });
+  });
+});
+
+describe('regional VAT rates', () => {
+  it('maps euVatArea, false for the overseas departments', async () => {
+    const { impl } = fetchReturning(
+      jsonResponse({
+        countryCode: 'FR',
+        standardRate: 20,
+        reducedRates: [2.1, 5.5, 10],
+        regionalRates: [
+          { rate: 0.9, note: 'For Corsica: …', euVatArea: true },
+          { rate: 8.5, note: 'The standard VAT rate in Martinique, Guadeloupe and Réunion is 8.5%.', euVatArea: false },
+        ],
+      }),
+    );
+
+    const france = await client(impl).vatRate('FR');
+
+    expect(france.regionalRates.map((r) => r.euVatArea)).toEqual([true, false]);
+  });
+});

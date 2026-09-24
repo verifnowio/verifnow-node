@@ -42,6 +42,12 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
+/** Options for `validateVat`: the per-call options, plus the company expected to hold the number. */
+export interface VatValidationOptions extends RequestOptions {
+  /** The company you expect to hold this VAT number, e.g. from a supplier form. At most 200 characters. */
+  traderName?: string;
+}
+
 /**
  * Client for the VerifNow validation API.
  *
@@ -115,9 +121,18 @@ export class VerifNow {
     return this.validate('iban', value, options);
   }
 
-  /** Validate a VAT number. */
-  validateVat(value: string, options?: RequestOptions): Promise<ValidationResult> {
-    return this.validate('vat', value, options);
+  /**
+   * Validate a VAT number.
+   *
+   * Pass `traderName` to ask whether the number belongs to that company:
+   * `vatDetails.traderNameMatch` answers `MATCH`, `MISMATCH` or `NOT_AVAILABLE`, and
+   * `traderNameMatchSource` says who compared — VerifNow against the name VIES publishes, or VIES
+   * itself where it withholds the name but checks one (Spain). Germany does neither.
+   */
+  validateVat(value: string, options: VatValidationOptions = {}): Promise<ValidationResult> {
+    const { traderName, ...requestOptions } = options;
+    const extra = traderName && traderName.trim() !== '' ? { traderName } : undefined;
+    return this.#validate('vat', value, requestOptions, extra);
   }
 
   /**
@@ -155,10 +170,19 @@ export class VerifNow {
    *
    * The typed helpers above call this. Use it directly when the rule is chosen at runtime.
    */
-  async validate(
+  validate(
     rule: ValidationRule,
     value: string,
     options: RequestOptions = {},
+  ): Promise<ValidationResult> {
+    return this.#validate(rule, value, options);
+  }
+
+  async #validate(
+    rule: ValidationRule,
+    value: string,
+    options: RequestOptions,
+    extra?: Record<string, string>,
   ): Promise<ValidationResult> {
     if (typeof value !== 'string' || value.trim() === '') {
       // Caught here rather than server-side: an empty value consumes quota and can only fail.
@@ -168,7 +192,7 @@ export class VerifNow {
     }
 
     const url = `${this.#baseUrl}/api/v1/validate/${rule}`;
-    const body = JSON.stringify({ value });
+    const body = JSON.stringify({ value, ...extra });
     return this.#withRetry(() =>
       this.#requestOnce('POST', url, body, options, (payload, quota) => mapResult(payload, quota)),
     );
@@ -509,6 +533,8 @@ function mapVatDetails(raw: unknown): VatDetails | undefined {
     traderAddress: asString(d.trader_address),
     viesAvailable: asBoolean(d.vies_available),
     consultationNumber: asString(d.consultation_number),
+    traderNameMatch: asString(d.trader_name_match) as VatDetails['traderNameMatch'],
+    traderNameMatchSource: asString(d.trader_name_match_source) as VatDetails['traderNameMatchSource'],
   };
 }
 
@@ -587,7 +613,11 @@ function mapCountryVatRates(raw: Record<string, unknown>): CountryVatRates {
     regionalRates: Array.isArray(raw.regionalRates)
       ? raw.regionalRates
           .filter((r): r is Record<string, unknown> => r !== null && typeof r === 'object')
-          .map((r) => ({ rate: asNumber(r.rate) ?? Number.NaN, note: asString(r.note) }))
+          .map((r) => ({
+            rate: asNumber(r.rate) ?? Number.NaN,
+            note: asString(r.note),
+            euVatArea: asBoolean(r.euVatArea),
+          }))
       : [],
     situationOn: asString(raw.situationOn),
     fetchedAt: asDate(raw.fetchedAt),

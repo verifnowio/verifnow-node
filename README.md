@@ -78,6 +78,23 @@ if (vat.registered === null) {
 return accept({ verified: true, stale: vat.source === 'STALE' });
 ```
 
+### Does the number belong to this company?
+
+Pass the name you expect — from a supplier form, for instance — and the response says whether it
+matches the registered holder:
+
+```ts
+const result = await client.validateVat('ESA28015865', { traderName: 'Telefonica' });
+
+result.vatDetails?.traderNameMatch;        // 'MATCH' | 'MISMATCH' | 'NOT_AVAILABLE'
+result.vatDetails?.traderNameMatchSource;  // 'VERIFNOW' | 'VIES'
+```
+
+Who compares depends on the member state. Where VIES publishes the holder's name (most of them),
+VerifNow compares, ignoring case, accents, punctuation and legal forms. Spain publishes no name but
+has VIES check one. Germany does neither, and the answer is `NOT_AVAILABLE` rather than a guess. A
+`MISMATCH` is a question for a human, not proof of fraud.
+
 Per-country VIES availability is public and needs no API key:
 [`GET /api/v1/status/vies`](https://www.verifnow.io/en/status).
 
@@ -92,12 +109,16 @@ const france = await client.vatRate('FR');   // GR is accepted for Greece (EL)
 
 france.standardRate;    // 20
 france.reducedRates;    // [2.1, 5.5, 10] — which one applies depends on the product
-france.regionalRates;   // [{ rate: 8.5, note: 'The standard VAT rate in Martinique, …' }, …]
+france.regionalRates;   // [{ rate: 8.5, note: 'The standard VAT rate in Martinique, …', euVatArea: false }, …]
 france.situationOn;     // '2026-07-01' — the date TEDB says these rates apply from
 france.fetchedAt;       // Date — when VerifNow last retrieved them
 
 const all = await client.vatRates();         // all.rates: one entry per member state
 ```
+
+`euVatArea: false` marks the Canary Islands and the French overseas territories, which the VAT
+Directive excludes: goods shipped there from another member state are an export, not a distance
+sale at that rate.
 
 **These are the rates a member state has, not the rate an invoice carries.** In B2B trade between
 member states the invoice is usually zero-rated under the reverse charge, whatever the buyer's

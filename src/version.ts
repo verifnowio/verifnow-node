@@ -4,4 +4,4 @@
  *
  * Kept in sync with `package.json` by a test — bump both together.
  */
-export const VERSION = '1.8.0';
+export const VERSION = '1.9.0';

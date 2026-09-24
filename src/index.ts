@@ -1,4 +1,4 @@
-export { VerifNow, type RequestOptions } from './client.js';
+export { VerifNow, type RequestOptions, type VatValidationOptions } from './client.js';
 
 export {
   VerifNowError,
@@ -25,6 +25,8 @@ export {
   type PhoneLineType,
   type QuotaInfo,
   type RegionalVatRate,
+  type TraderNameMatch,
+  type TraderNameMatchSource,
   type RetryOptions,
   type RiskLevel,
   type ValidationLevel,
