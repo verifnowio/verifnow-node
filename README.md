@@ -318,6 +318,7 @@ Reuse one client across requests — it holds no per-request state.
 
 ## Other SDKs
 
+- **Python**: [`verifnow`](https://pypi.org/project/verifnow/) — `pip install verifnow`
 - **Java / Spring**: [`io.verifnow:verifnow-spring-boot-starter`](https://central.sonatype.com/artifact/io.verifnow/verifnow-spring-boot-starter)
 
 ## Documentation
